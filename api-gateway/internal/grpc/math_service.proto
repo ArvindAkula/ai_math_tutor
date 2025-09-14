@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package math;
+
+option go_package = "ai-math-tutor/api-gateway/internal/grpc";
+
+// Math service for high-performance mathematical operations
+service MathService {
+    // Parse a mathematical problem
+    rpc ParseProblem(ParseProblemRequest) returns (ParseProblemResponse);
+    
+    // Solve a problem step by step
+    rpc SolveProblem(SolveProblemRequest) returns (SolveProblemResponse);
+    
+    // Validate an answer
+    rpc ValidateAnswer(ValidateAnswerRequest) returns (ValidateAnswerResponse);
+    
+    // Generate visualization
+    rpc GenerateVisualization(VisualizationRequest) returns (VisualizationResponse);
+    
+    // Generate hint
+    rpc GenerateHint(HintRequest) returns (HintResponse);
+    
+    // Explain a solution step
+    rpc ExplainStep(ExplanationRequest) returns (ExplanationResponse);
+}
+
+// Request messages
+message ParseProblemRequest {
+    string problem_text = 1;
+    string domain = 2;
+    string user_id = 3;
+}
+
+message SolveProblemRequest {
+    ParsedProblem problem = 1;
+}
+
+message ValidateAnswerRequest {
+    ParsedProblem problem = 1;
+    string answer = 2;
+}
+
+message VisualizationRequest {
+    ParsedProblem problem = 1;
+    string viz_type = 2;
+}
+
+message HintRequest {
+    ParsedProblem problem = 1;
+    int32 current_step = 2;
+}
+
+message ExplanationRequest {
+    SolutionStep step = 1;
+    string user_level = 2;
+}
+
+// Response messages
+message ParseProblemResponse {
+    ParsedProblem problem = 1;
+    string error = 2;
+}
+
+message SolveProblemResponse {
+    StepSolution solution = 1;
+    string error = 2;
+}
+
+message ValidateAnswerResponse {
+    ValidationResult result = 1;
+    string error = 2;
+}
+
+message VisualizationResponse {
+    VisualizationData data = 1;
+    string error = 2;
+}
+
+message HintResponse {
+    string hint = 1;
+    int32 hint_level = 2;
+    string error = 3;
+}
+
+message ExplanationResponse {
+    string explanation = 1;
+    string complexity_level = 2;
+    repeated string related_concepts = 3;
+    string error = 4;
+}
+
+// Data structures
+message ParsedProblem {
+    string id = 1;
+    string original_text = 2;
+    string domain = 3;
+    string difficulty = 4;
+    repeated string variables = 5;
+    repeated string expressions = 6;
+    string problem_type = 7;
+    map<string, string> metadata = 8;
+}
+
+message StepSolution {
+    string problem_id = 1;
+    repeated SolutionStep steps = 2;
+    string final_answer = 3;
+    string solution_method = 4;
+    double confidence_score = 5;
+    double computation_time = 6;
+}
+
+message SolutionStep {
+    int32 step_number = 1;
+    string operation = 2;
+    string explanation = 3;
+    string mathematical_expression = 4;
+    string intermediate_result = 5;
+    string reasoning = 6;
+}
+
+message ValidationResult {
+    bool is_correct = 1;
+    string user_answer = 2;
+    string correct_answer = 3;
+    string explanation = 4;
+    double partial_credit = 5;
+}
+
+message VisualizationData {
+    string plot_type = 1;
+    string title = 2;
+    repeated string axis_labels = 3;
+    string image_base64 = 4;
+    map<string, string> metadata = 5;
+}

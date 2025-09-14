@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-math-tutor
+  labels:
+    name: ai-math-tutor
+    app: ai-math-tutor
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: ai-math-tutor-quota
+  namespace: ai-math-tutor
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    persistentvolumeclaims: "10"
+    services: "10"
+    secrets: "10"
+    configmaps: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: ai-math-tutor-limits
+  namespace: ai-math-tutor
+spec:
+  limits:
+  - default:
+      cpu: "500m"
+      memory: "512Mi"
+    defaultRequest:
+      cpu: "100m"
+      memory: "128Mi"
+    type: Container

@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-math-tutor-config
+  namespace: ai-math-tutor
+data:
+  # Database configuration
+  POSTGRES_DB: "ai_math_tutor"
+  DATABASE_HOST: "postgres-service"
+  DATABASE_PORT: "5432"
+  
+  # Redis configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  
+  # Service URLs
+  MATH_ENGINE_URL: "http://math-engine-service:8001"
+  API_GATEWAY_URL: "http://api-gateway-service:8000"
+  
+  # Application configuration
+  LOG_LEVEL: "INFO"
+  ENVIRONMENT: "production"
+  NODE_ENV: "production"
+  GIN_MODE: "release"
+  
+  # Frontend configuration
+  REACT_APP_API_URL: "https://api.yourdomain.com"
+  REACT_APP_WS_URL: "wss://api.yourdomain.com"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: ai-math-tutor
+data:
+  redis.conf: |
+    # Redis configuration for AI Math Tutor
+    bind 0.0.0.0
+    port 6379
+    timeout 0
+    tcp-keepalive 300
+    
+    # Memory management
+    maxmemory 256mb
+    maxmemory-policy allkeys-lru
+    
+    # Persistence
+    save 900 1
+    save 300 10
+    save 60 10000
+    
+    # Security
+    requirepass ""
+    
+    # Logging
+    loglevel notice
+    logfile ""
+    
+    # Performance
+    tcp-backlog 511
+    databases 16
+    
+    # Append only file
+    appendonly yes
+    appendfsync everysec
+    
+    # Slow log
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128

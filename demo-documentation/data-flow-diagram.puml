@@ -1,0 +1,103 @@
+@startuml Data Flow Diagram
+!theme plain
+title AI Math Tutor - Data Flow Architecture
+
+!define RECTANGLE class
+
+package "User Interface Layer" {
+  RECTANGLE "Web Browser" as browser {
+    + React Application
+    + Material-UI Components
+    + Local Storage (JWT)
+  }
+}
+
+package "API Layer" {
+  RECTANGLE "API Gateway" as api {
+    + Authentication Middleware
+    + Rate Limiting
+    + Request Routing
+    + WebSocket Handler
+  }
+}
+
+package "Business Logic Layer" {
+  RECTANGLE "Math Engine" as math {
+    + Problem Parser
+    + Solution Generator
+    + Visualization Engine
+    + AI Explainer
+  }
+}
+
+package "Data Storage Layer" {
+  RECTANGLE "PostgreSQL" as db {
+    + users
+    + user_sessions
+    + user_profiles
+    + problems
+    + quiz_results
+  }
+  
+  RECTANGLE "Redis" as cache {
+    + Session Cache
+    + Solution Cache
+    + Visualization Cache
+  }
+}
+
+package "External APIs" {
+  RECTANGLE "OpenAI" as openai {
+    + GPT Models
+    + Natural Language Processing
+  }
+}
+
+' Data Flow Arrows
+browser -down-> api : "1. HTTP Requests\n(JSON Payload)"
+api -down-> math : "2. Problem Data\n(Structured Format)"
+math -down-> db : "3. Store Results\n(SQL Queries)"
+math -right-> cache : "4. Cache Solutions\n(Key-Value)"
+math -up-> openai : "5. AI Explanations\n(API Calls)"
+
+' Response Flow
+openai -down-> math : "6. AI Response\n(Text)"
+cache -left-> math : "7. Cached Data\n(Fast Retrieval)"
+db -up-> math : "8. Stored Data\n(Query Results)"
+math -up-> api : "9. Processed Results\n(JSON)"
+api -up-> browser : "10. HTTP Response\n(JSON/WebSocket)"
+
+' Data Types
+note right of browser
+  **Frontend Data:**
+  • User Input (LaTeX/Text)
+  • Authentication Tokens
+  • UI State Management
+  • Visualization Rendering
+end note
+
+note right of api
+  **API Data:**
+  • JWT Tokens
+  • Request Validation
+  • Rate Limit Counters
+  • WebSocket Messages
+end note
+
+note right of math
+  **Math Engine Data:**
+  • Parsed Expressions
+  • Solution Steps
+  • Plot Coordinates
+  • AI Explanations
+end note
+
+note right of db
+  **Database Schema:**
+  • User Management
+  • Session Tracking
+  • Problem History
+  • Progress Analytics
+end note
+
+@enduml

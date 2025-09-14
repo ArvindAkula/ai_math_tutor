@@ -1,0 +1,150 @@
+services:
+  # Database Services
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-math-tutor-postgres
+    environment:
+      POSTGRES_DB: ai_math_tutor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./shared/database/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./shared/database/optimize.sql:/docker-entrypoint-initdb.d/02-optimize.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ai_math_tutor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - ai-math-tutor-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-math-tutor-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - ai-math-tutor-network
+
+  # Core Services
+  math-engine:
+    build:
+      context: .
+      dockerfile: ./math-engine/Dockerfile
+      target: production
+    container_name: ai-math-tutor-math-engine
+    ports:
+      - "8001:8001"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/ai_math_tutor
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./math-engine:/app:${VOLUME_MODE:-rw}
+      - math_engine_cache:/app/.cache
+    restart: unless-stopped
+    networks:
+      - ai-math-tutor-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+      target: development
+    container_name: ai-math-tutor-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/ai_math_tutor?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+      - MATH_ENGINE_URL=http://math-engine:8001
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-key}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      math-engine:
+        condition: service_started
+    volumes:
+      - ./api-gateway:/app:${VOLUME_MODE:-rw}
+    restart: unless-stopped
+    networks:
+      - ai-math-tutor-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.3'
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: ai-math-tutor-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_WS_URL=ws://localhost:8000
+      - NODE_ENV=${NODE_ENV:-development}
+    depends_on:
+      - api-gateway
+    volumes:
+      - ./frontend:/app:${VOLUME_MODE:-rw}
+      - frontend_node_modules:/app/node_modules
+    restart: unless-stopped
+    networks:
+      - ai-math-tutor-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '0.5'
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  math_engine_cache:
+    driver: local
+  frontend_node_modules:
+    driver: local
+
+networks:
+  ai-math-tutor-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

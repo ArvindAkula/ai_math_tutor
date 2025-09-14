@@ -1,0 +1,102 @@
+@startuml WebSocket Real-time Features
+!theme plain
+title AI Math Tutor - Real-time Collaboration Features
+
+actor "Student A" as studentA
+actor "Student B" as studentB
+participant "Frontend A" as frontendA
+participant "Frontend B" as frontendB
+participant "API Gateway" as gateway
+participant "WebSocket Hub" as hub
+participant "Math Engine" as math
+participant "Redis" as cache
+
+== Session Creation ==
+studentA -> frontendA: Create study session
+frontendA -> gateway: POST /ws/sessions/create
+gateway -> hub: Create new session
+hub -> cache: Store session data
+hub -> gateway: Session ID
+gateway -> frontendA: Session created
+frontendA -> studentA: Share session ID
+
+== Student B Joins ==
+studentB -> frontendB: Join session with ID
+frontendB -> gateway: WebSocket connect + session ID
+gateway -> hub: Authenticate & join session
+hub -> cache: Update session participants
+hub -> frontendA: Notify new participant
+hub -> frontendB: Session joined
+frontendA -> studentA: Show "Student B joined"
+frontendB -> studentB: Connected to session
+
+== Real-time Problem Solving ==
+studentA -> frontendA: Enter math problem
+frontendA -> gateway: WebSocket message (problem_input)
+gateway -> hub: Broadcast to session
+hub -> frontendB: Problem shared
+frontendB -> studentB: Show shared problem
+
+studentA -> frontendA: Request solution
+frontendA -> gateway: WebSocket message (solve_request)
+gateway -> math: Generate solution
+math -> gateway: Solution steps
+gateway -> hub: Broadcast solution
+hub -> frontendA: Solution data
+hub -> frontendB: Solution data
+frontendA -> studentA: Display solution
+frontendB -> studentB: Display solution
+
+== Collaborative Interaction ==
+studentB -> frontendB: Ask question about step 3
+frontendB -> gateway: WebSocket message (question)
+gateway -> hub: Broadcast question
+hub -> frontendA: Question notification
+frontendA -> studentA: Show question from Student B
+
+studentA -> frontendA: Provide explanation
+frontendA -> gateway: WebSocket message (explanation)
+gateway -> hub: Broadcast explanation
+hub -> frontendB: Explanation received
+frontendB -> studentB: Show explanation
+
+== Real-time Visualization ==
+studentA -> frontendA: Generate graph
+frontendA -> gateway: WebSocket message (visualize)
+gateway -> math: Create visualization
+math -> cache: Cache plot data
+math -> gateway: Visualization data
+gateway -> hub: Broadcast visualization
+hub -> frontendA: Plot data
+hub -> frontendB: Plot data
+frontendA -> studentA: Display interactive graph
+frontendB -> studentB: Display same graph
+
+== Session Management ==
+studentA -> frontendA: End session
+frontendA -> gateway: WebSocket message (end_session)
+gateway -> hub: Close session
+hub -> cache: Clean up session data
+hub -> frontendB: Session ended notification
+frontendB -> studentB: Session closed
+hub -> frontendA: Session closed confirmation
+frontendA -> studentA: Session ended
+
+note right of hub
+  **WebSocket Hub Features:**
+  • Session Management
+  • User Authentication
+  • Message Broadcasting
+  • Connection Health Monitoring
+  • Rate Limiting per Connection
+end note
+
+note right of cache
+  **Real-time Data:**
+  • Active Sessions
+  • Participant Lists
+  • Shared Problems
+  • Collaboration History
+end note
+
+@enduml

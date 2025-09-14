@@ -1,0 +1,57 @@
+@startuml AI Math Tutor - System Architecture
+!theme plain
+title AI Math Tutor - System Architecture Overview
+
+package "Frontend Layer" {
+  [React Frontend] as frontend
+}
+
+package "API Gateway Layer" {
+  [Go API Gateway] as gateway
+}
+
+package "Core Services" {
+  [Math Engine] as mathengine
+}
+
+package "Data Layer" {
+  database "PostgreSQL" as postgres
+  database "Redis Cache" as redis
+}
+
+package "External Services" {
+  cloud "OpenAI API" as openai
+}
+
+' Connections
+frontend --> gateway : HTTP/WebSocket
+gateway --> mathengine : HTTP
+gateway --> postgres : SQL
+gateway --> redis : Cache Operations
+mathengine --> postgres : Data Storage
+mathengine --> redis : Caching
+mathengine --> openai : AI Explanations
+
+' Network
+cloud "Internet" as internet
+internet --> frontend
+
+note right of gateway
+  **API Gateway Features:**
+  • JWT Authentication
+  • Rate Limiting (100 req/min)
+  • WebSocket for Real-time
+  • Request Validation
+  • Error Handling
+end note
+
+note right of mathengine
+  **Math Engine Capabilities:**
+  • Symbolic Mathematics (SymPy)
+  • Step-by-Step Solutions
+  • Interactive Visualizations
+  • AI-Powered Explanations
+  • Quiz Generation
+end note
+
+@enduml

@@ -1,0 +1,190 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: ai-math-tutor
+  labels:
+    app: postgres
+    component: database
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        component: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: ai-math-tutor-config
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: POSTGRES_INITDB_ARGS
+          value: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: init-scripts
+          mountPath: /docker-entrypoint-initdb.d
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+            - -d
+            - $(POSTGRES_DB)
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - $(POSTGRES_USER)
+            - -d
+            - $(POSTGRES_DB)
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+      - name: init-scripts
+        configMap:
+          name: postgres-init-scripts
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: ai-math-tutor
+  labels:
+    app: postgres
+    component: database
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+  selector:
+    app: postgres
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts
+  namespace: ai-math-tutor
+data:
+  01-init.sql: |
+    -- Database initialization script
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+    
+    -- Create tables (from shared/database/init.sql)
+    CREATE TABLE IF NOT EXISTS users (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        email VARCHAR(255) UNIQUE NOT NULL,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    CREATE TABLE IF NOT EXISTS user_profiles (
+        user_id UUID PRIMARY KEY REFERENCES users(id),
+        skill_levels JSONB NOT NULL DEFAULT '{}',
+        learning_goals TEXT[],
+        preferences JSONB NOT NULL DEFAULT '{}',
+        total_problems_solved INTEGER DEFAULT 0,
+        current_streak INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    CREATE TABLE IF NOT EXISTS problems (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        problem_text TEXT NOT NULL,
+        domain VARCHAR(50) NOT NULL,
+        difficulty_level INTEGER NOT NULL,
+        solution_steps JSONB NOT NULL,
+        tags TEXT[],
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    CREATE TABLE IF NOT EXISTS problem_attempts (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id),
+        problem_id UUID REFERENCES problems(id),
+        user_answer TEXT,
+        is_correct BOOLEAN NOT NULL,
+        time_taken INTEGER,
+        hints_used INTEGER DEFAULT 0,
+        attempt_timestamp TIMESTAMP DEFAULT NOW()
+    );
+    
+    CREATE TABLE IF NOT EXISTS quiz_sessions (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id),
+        topic VARCHAR(100) NOT NULL,
+        difficulty_level INTEGER NOT NULL,
+        total_questions INTEGER NOT NULL,
+        correct_answers INTEGER DEFAULT 0,
+        started_at TIMESTAMP DEFAULT NOW(),
+        completed_at TIMESTAMP,
+        status VARCHAR(20) DEFAULT 'active'
+    );
+    
+    CREATE TABLE IF NOT EXISTS learning_progress (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID REFERENCES users(id),
+        topic VARCHAR(100) NOT NULL,
+        mastery_level DECIMAL(3,2) NOT NULL,
+        last_practiced TIMESTAMP DEFAULT NOW(),
+        practice_count INTEGER DEFAULT 0
+    );
+  
+  02-optimize.sql: |
+    -- Database optimization script
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+    CREATE INDEX IF NOT EXISTS idx_problem_attempts_user_id ON problem_attempts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_problem_attempts_problem_id ON problem_attempts(problem_id);
+    CREATE INDEX IF NOT EXISTS idx_quiz_sessions_user_id ON quiz_sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_learning_progress_user_id ON learning_progress(user_id);
+    CREATE INDEX IF NOT EXISTS idx_learning_progress_topic ON learning_progress(topic);
+    CREATE INDEX IF NOT EXISTS idx_problems_domain ON problems(domain);
+    CREATE INDEX IF NOT EXISTS idx_problems_difficulty ON problems(difficulty_level);

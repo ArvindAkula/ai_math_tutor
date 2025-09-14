@@ -1,0 +1,77 @@
+@startuml Problem Solving Flow
+!theme plain
+title AI Math Tutor - Problem Solving Flow
+
+actor Student
+participant "React Frontend" as Frontend
+participant "API Gateway" as Gateway
+participant "Math Engine" as MathEngine
+participant "Redis Cache" as Cache
+participant "OpenAI API" as OpenAI
+
+== Problem Input ==
+Student -> Frontend: Enter math problem
+Frontend -> Frontend: Validate input format
+Frontend -> Gateway: POST /api/v1/problems/parse
+Gateway -> MathEngine: Parse problem request
+MathEngine -> MathEngine: Parse mathematical expression
+MathEngine -> Gateway: Parsed problem structure
+Gateway -> Frontend: Problem structure
+Frontend -> Student: Show parsed problem
+
+== Step-by-Step Solution ==
+Student -> Frontend: Request solution
+Frontend -> Gateway: POST /api/v1/problems/solve
+Gateway -> Cache: Check solution cache
+alt Cache Hit
+    Cache -> Gateway: Cached solution
+else Cache Miss
+    Gateway -> MathEngine: Solve problem request
+    MathEngine -> MathEngine: Generate step-by-step solution
+    MathEngine -> Gateway: Solution steps
+    Gateway -> Cache: Cache solution
+end
+Gateway -> Frontend: Solution steps
+Frontend -> Student: Display step-by-step solution
+
+== AI Explanation ==
+Student -> Frontend: Request explanation for step
+Frontend -> Gateway: POST /api/v1/problems/explain
+Gateway -> Cache: Check explanation cache
+alt Cache Hit
+    Cache -> Gateway: Cached explanation
+else Cache Miss
+    Gateway -> MathEngine: Explanation request
+    MathEngine -> OpenAI: Generate natural language explanation
+    OpenAI -> MathEngine: AI explanation
+    MathEngine -> Gateway: Formatted explanation
+    Gateway -> Cache: Cache explanation
+end
+Gateway -> Frontend: AI explanation
+Frontend -> Student: Show detailed explanation
+
+== Visualization ==
+Student -> Frontend: Request graph/visualization
+Frontend -> Gateway: POST /api/v1/problems/visualize
+Gateway -> Cache: Check visualization cache
+alt Cache Hit
+    Cache -> Gateway: Cached visualization
+else Cache Miss
+    Gateway -> MathEngine: Generate visualization
+    MathEngine -> MathEngine: Create interactive plot
+    MathEngine -> Gateway: Plot data + base64 image
+    Gateway -> Cache: Cache visualization
+end
+Gateway -> Frontend: Visualization data
+Frontend -> Student: Display interactive graph
+
+== Answer Validation ==
+Student -> Frontend: Submit answer
+Frontend -> Gateway: POST /api/v1/problems/validate
+Gateway -> MathEngine: Validate answer
+MathEngine -> MathEngine: Compare with correct solution
+MathEngine -> Gateway: Validation result
+Gateway -> Frontend: Validation feedback
+Frontend -> Student: Show correctness + feedback
+
+@enduml

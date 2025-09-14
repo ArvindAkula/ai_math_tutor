@@ -1,0 +1,62 @@
+@startuml Authentication Flow
+!theme plain
+title AI Math Tutor - Authentication Flow
+
+actor User
+participant "React Frontend" as Frontend
+participant "API Gateway" as Gateway
+participant "PostgreSQL" as DB
+participant "Redis Cache" as Cache
+
+== User Registration ==
+User -> Frontend: Fill registration form
+Frontend -> Gateway: POST /api/v1/auth/register
+Gateway -> DB: Create user record
+DB -> Gateway: User created
+Gateway -> Gateway: Generate JWT tokens
+Gateway -> DB: Store refresh token
+Gateway -> Frontend: User data + tokens
+Frontend -> Frontend: Store tokens in localStorage
+Frontend -> User: Redirect to dashboard
+
+== User Login ==
+User -> Frontend: Enter credentials
+Frontend -> Gateway: POST /api/v1/auth/login
+Gateway -> DB: Validate credentials
+DB -> Gateway: User data
+Gateway -> Gateway: Generate JWT tokens
+Gateway -> DB: Store refresh token session
+Gateway -> Cache: Cache user session
+Gateway -> Frontend: User data + tokens
+Frontend -> Frontend: Store tokens in localStorage
+Frontend -> User: Redirect to dashboard
+
+== Protected Request ==
+User -> Frontend: Access protected feature
+Frontend -> Gateway: Request with Authorization header
+Gateway -> Gateway: Validate JWT token
+alt Token Valid
+    Gateway -> Gateway: Extract user info
+    Gateway -> Frontend: Protected resource
+    Frontend -> User: Display content
+else Token Expired
+    Gateway -> Frontend: 401 Unauthorized
+    Frontend -> Gateway: POST /api/v1/auth/refresh
+    Gateway -> DB: Validate refresh token
+    DB -> Gateway: Token valid
+    Gateway -> Gateway: Generate new access token
+    Gateway -> Frontend: New access token
+    Frontend -> Gateway: Retry original request
+    Gateway -> Frontend: Protected resource
+end
+
+== User Logout ==
+User -> Frontend: Click logout
+Frontend -> Gateway: POST /api/v1/auth/logout
+Gateway -> DB: Revoke refresh token
+Gateway -> Cache: Clear user session
+Gateway -> Frontend: Logout success
+Frontend -> Frontend: Clear localStorage
+Frontend -> User: Redirect to home
+
+@enduml

@@ -1,0 +1,92 @@
+@startuml Deployment Architecture
+!theme plain
+title AI Math Tutor - Deployment Architecture
+
+package "Development Environment" {
+  node "Docker Compose" as dev {
+    component "Frontend Container" as dev_frontend
+    component "API Gateway Container" as dev_api  
+    component "Math Engine Container" as dev_math
+    database "PostgreSQL Container" as dev_db
+    database "Redis Container" as dev_redis
+  }
+}
+
+package "Production Environment" {
+  cloud "Kubernetes Cluster" as k8s
+  
+  package "Frontend Tier" {
+    [Frontend Pods] as frontend_pods
+  }
+  
+  package "API Tier" {
+    [API Gateway Pods] as api_pods
+  }
+  
+  package "Service Tier" {
+    [Math Engine Pods] as math_pods
+  }
+  
+  package "Data Tier" {
+    database "PostgreSQL" as prod_db
+    database "Redis" as prod_cache
+  }
+  
+  package "Ingress" {
+    [Load Balancer] as lb
+  }
+}
+
+package "External Services" {
+  cloud "OpenAI API" as openai_prod
+  cloud "Monitoring" as monitoring
+}
+
+' Development Flow
+dev --> k8s : "CI/CD Pipeline\nDocker Images"
+
+' Production Flow
+actor "Internet Users" as internet
+internet --> lb : "HTTPS Traffic"
+lb --> frontend_pods : "Static Assets"
+lb --> api_pods : "API Requests"
+api_pods --> math_pods : "Math Operations"
+api_pods --> prod_db : "Data Queries"
+api_pods --> prod_cache : "Caching"
+math_pods --> prod_db : "Results Storage"
+math_pods --> prod_cache : "Solution Cache"
+math_pods --> openai_prod : "AI Explanations"
+
+' Monitoring
+frontend_pods --> monitoring : "Health Status"
+api_pods --> monitoring : "Metrics"
+math_pods --> monitoring : "Performance"
+prod_db --> monitoring : "DB Health"
+prod_cache --> monitoring : "Cache Stats"
+
+note right of dev
+  **Development Features:**
+  • Hot Reloading
+  • Volume Mounts
+  • Debug Logging
+  • Local Testing
+end note
+
+note right of k8s
+  **Production Features:**
+  • Auto-scaling (HPA)
+  • Rolling Updates
+  • Health Checks
+  • Resource Limits
+  • Persistent Storage
+end note
+
+note right of monitoring
+  **Monitoring Stack:**
+  • Application Metrics
+  • Error Tracking
+  • Performance Monitoring
+  • Alert Management
+end note
+
+@enduml
